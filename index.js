@@ -9,6 +9,7 @@ var createChannelView = require('./views/channels')
 var createMessagesView = require('./views/messages')
 var createTopicsView = require('./views/topics')
 var createUsersView = require('./views/users')
+var createModerationView = require('./views/moderation')
 var swarm = require('./swarm')
 
 var DATABASE_VERSION = 1
@@ -16,6 +17,7 @@ var CHANNELS = 'c'
 var MESSAGES = 'm'
 var TOPICS = 't'
 var USERS = 'u'
+var MODERATION = 'x'
 
 module.exports = Cabal
 module.exports.databaseVersion = DATABASE_VERSION
@@ -45,7 +47,7 @@ function Cabal (storage, key, opts) {
   }
 
   this.maxFeeds = opts.maxFeeds
-  this.key = key || null
+  ;[this.key,this.modKey] = key ? key.split('@') : [null,null]
   this.db = opts.db || memdb()
   this.kcore = kappa(storage, {
     valueEncoding: json
@@ -72,11 +74,16 @@ function Cabal (storage, key, opts) {
     sublevel(this.db, TOPICS, { valueEncoding: json })))
   this.kcore.use('users', createUsersView(
     sublevel(this.db, USERS, { valueEncoding: json })))
+  this.kcore.use('moderation', createModerationView(
+    this, this.modKey,
+    sublevel(this.db, MODERATION, { valueEncoding: json }))
+  )
 
   this.messages = this.kcore.api.messages
   this.channels = this.kcore.api.channels
   this.topics = this.kcore.api.topics
   this.users = this.kcore.api.users
+  this.moderation = this.kcore.api.moderation
 }
 
 inherits(Cabal, events.EventEmitter)
