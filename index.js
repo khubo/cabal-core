@@ -47,7 +47,7 @@ function Cabal (storage, key, opts) {
   }
 
   this.maxFeeds = opts.maxFeeds
-  ;[this.key,this.modKey] = key ? key.split('@') : [null,null]
+  ;[this.modKey,this.key] = key ? key.split('@') : [null,null]
   this.db = opts.db || memdb()
   this.kcore = kappa(storage, {
     valueEncoding: json
