@@ -5,32 +5,36 @@ var randomBytes = require('crypto').randomBytes
 var collect = require('collect-stream')
 
 test('ban a user by key', function (t) {
-  t.plan(6)
+  t.plan(10)
   var addr = randomBytes(32).toString('hex')
   var cabal0 = Cabal(ram, 'cabal://' + addr)
   cabal0.ready(function () {
     cabal0.getLocalKey(function (err, key) {
       t.error(err)
       var cabal1 = Cabal(ram, 'cabal://' + key + '@' + addr)
-      var cabal2 = Cabal(ram, 'cabal://' + key + '@' + addr)
-      var pending = 3
+      var cabal2 = Cabal(ram, 'cabal://' + key + '@' + addr) // subscribes to mod
+      var cabal3 = Cabal(ram, 'cabal://' + addr) // does not subscribe to mod
+      var pending = 4
       cabal1.ready(function () {
-        if (--pending === 0) ready(cabal0, cabal1, cabal2)
+        if (--pending === 0) ready(cabal0, cabal1, cabal2, cabal3)
       })
       cabal2.ready(function () {
-        if (--pending === 0) ready(cabal0, cabal1, cabal2)
+        if (--pending === 0) ready(cabal0, cabal1, cabal2, cabal3)
       })
-      if (--pending === 0) ready(cabal0, cabal1, cabal2)
+      cabal3.ready(function () {
+        if (--pending === 0) ready(cabal0, cabal1, cabal2, cabal3)
+      })
+      if (--pending === 0) ready(cabal0, cabal1, cabal2, cabal3)
     })
   })
-  function ready (cabal0, cabal1, cabal2) {
+  function ready (cabal0, cabal1, cabal2, cabal3) {
     cabal1.getLocalKey(function (err, key1) {
       t.error(err)
       cabal0.publish({
         type: 'ban/add',
         content: { key: key1 }
       })
-      sync([cabal0,cabal1,cabal2])
+      sync([cabal0,cabal1,cabal2,cabal3])
       setTimeout(function () {
         collect(cabal2.moderation.listBans('@'), function (err, bans) {
           t.error(err)
@@ -39,6 +43,14 @@ test('ban a user by key', function (t) {
         cabal2.moderation.isBanned({ key: key1 }, function (err, banned) {
           t.error(err)
           t.ok(banned)
+        })
+        collect(cabal3.moderation.listBans('@'), function (err, bans) {
+          t.error(err)
+          t.deepEqual(bans, [])
+        })
+        cabal3.moderation.isBanned({ key: key1 }, function (err, banned) {
+          t.error(err)
+          t.notOk(banned)
         })
       }, 1000)
     })
@@ -52,8 +64,8 @@ test('delegated moderator ban a user by key', function (t) {
   cabal0.ready(function () {
     cabal0.getLocalKey(function (err, key) {
       t.error(err)
-      var cabal1 = Cabal(ram, 'cabal://' + key + '@' + addr)
-      var cabal2 = Cabal(ram, 'cabal://' + key + '@' + addr)
+      var cabal1 = Cabal(ram, `cabal://${addr}?mod=${key}`)
+      var cabal2 = Cabal(ram, `cabal://${addr}?mod=${key}`)
       var pending = 3
       cabal1.ready(function () {
         if (--pending === 0) ready(cabal0, cabal1, cabal2)
