@@ -1,3 +1,4 @@
+  process.env.DEBUG = 'multifeed'
 var collect = require('collect-stream')
 var Cabal = require('..')
 var test = require('tape')
@@ -365,8 +366,7 @@ test('join two channels then leave one', function (t) {
   })
 })
 
-
-test('multiple channel participants', function (t) {
+test.only('multiple channel participants', function (t) {
   function create (id, cb) {
     var cabal = Cabal(ram)
     cabal.ready(function () {
