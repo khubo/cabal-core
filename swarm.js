@@ -1,6 +1,7 @@
 var pump = require('pump')
 var discovery = require('discovery-swarm')
 var swarmDefaults = require('dat-swarm-defaults')()
+const hyperswarm = reqiure('hyperswarm')
 var debug = require('debug')('cabal')
 var crypto = require('hypercore-crypto')
 
@@ -22,7 +23,7 @@ module.exports = function (cabal, opts, cb) {
     cb = opts
     opts = {}
   }
-  cb = cb || function () {}
+  cb = cb || function () { }
   opts = opts || {}
 
   var blocked = {}
@@ -31,15 +32,20 @@ module.exports = function (cabal, opts, cb) {
   cabal.getLocalKey(function (err, key) {
     if (err) return cb(err)
 
-    var swarm = discovery(Object.assign({}, swarmDefaults, { id: Buffer.from(key, 'hex') }))
+    // var swarm = discovery(Object.assign({}, swarmDefaults, { id: Buffer.from(key, 'hex') }))
+    const swarm = hyperswarm()
     var cabalKey = Buffer.isBuffer(cabal.key) ? cabal.key : Buffer.from(cabal.key, 'hex')
     var swarmKey = crypto.discoveryKey(cabalKey)
-    swarm.join(swarmKey.toString('hex'))
+    swarm.join(swarmKey.toString('hex'), {
+      lookup: true,
+      announce: true
+    })
+
     swarm.on('connection', function (conn, info) {
       var remoteKey = info.id.toString('hex')
       if (opts.block !== false && blocked[remoteKey]) return
       blocked[remoteKey] = true
-      connected[remoteKey] = connected[remoteKey] ? connected[remoteKey]+1 : 1
+      connected[remoteKey] = connected[remoteKey] ? connected[remoteKey] + 1 : 1
 
       var r = cabal.replicate(info.initiator)
       pump(conn, r, conn, function (err) {
